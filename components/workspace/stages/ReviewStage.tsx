@@ -175,7 +175,7 @@ function ParsingStatus({ onCancel }: { onCancel: () => void }) {
       </div>
       {seconds >= 15 && (
         <p className="text-[12px] leading-relaxed text-muted">
-          Busy sketches can take up to a minute. You can cancel and try a simpler
+          Busy sketches can take a minute or two. You can cancel and try a simpler
           photo, or keep waiting.
         </p>
       )}
