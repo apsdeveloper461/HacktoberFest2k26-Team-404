@@ -166,7 +166,7 @@ ChalkScript AI uses **Gemma 4** through the **Gemini API** with Google's officia
 - **Structured output:** JSON mode plus a response schema (`MODEL_RESPONSE_JSON_SCHEMA`). If the model refuses that request shape, the call retries once with JSON mode alone.
 - **Thinking:** set to *minimal* for speed. `VISION_THINKING=on` raises it (slower, sometimes more accurate).
 - **Failover:** when the primary model is overloaded (429 / 500 / 503), the other Gemma 4 model is tried once. SDK retries are capped, so the failover happens in seconds rather than after a long retry loop.
-- **Timeout:** 60 s per request.
+- **Timeout:** 60 s per request. With a retry or a failover, a busy sketch can take a minute or two in the worst case.
 
 ### Configuration (`.env.local`)
 
@@ -290,7 +290,7 @@ skills/sketch-to-chalkscript/          Agent skill (see above)
 docs/images/                           Screenshots used in this README
 ```
 
-Ownership, data flow and team rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md). The product brief and flow are in [`CHALKSCRIPT_AI_PROJECT_PLAN.md`](CHALKSCRIPT_AI_PROJECT_PLAN.md) and [`CHALKSCRIPT_AI_FULL_FLOW.md`](CHALKSCRIPT_AI_FULL_FLOW.md).
+Ownership, data flow and team rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md). The product brief, flow and background research are in [`CHALKSCRIPT_AI_PROJECT_PLAN.md`](CHALKSCRIPT_AI_PROJECT_PLAN.md), [`CHALKSCRIPT_AI_FULL_FLOW.md`](CHALKSCRIPT_AI_FULL_FLOW.md) and [`CHALKSCRIPT_AI_COMPETITOR_RESEARCH.md`](CHALKSCRIPT_AI_COMPETITOR_RESEARCH.md).
 
 ## Status and roadmap
 
