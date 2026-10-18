@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "type": "wireframe",
+  "canvas": { "width": 900, "height": 700 },
+  "elements": [
+    {
+      "id": "nav-1",
+      "type": "container",
+      "x": 0,
+      "y": 0,
+      "width": 900,
+      "height": 72,
+      "style": { "backgroundColor": "#f4f4f5" }
+    },
+    {
+      "id": "heading-1",
+      "type": "text",
+      "text": "Welcome",
+      "x": 60,
+      "y": 120,
+      "width": 300,
+      "height": 56,
+      "style": { "fontSize": 32, "color": "#171717" }
+    },
+    {
+      "id": "text-1",
+      "type": "text",
+      "text": "Turn rough sketches into editable pages.",
+      "x": 60,
+      "y": 186,
+      "width": 420,
+      "height": 32,
+      "style": { "fontSize": 18, "color": "#52525b" }
+    },
+    {
+      "id": "input-1",
+      "type": "input",
+      "text": "Email address",
+      "x": 60,
+      "y": 250,
+      "width": 280,
+      "height": 48,
+      "style": {}
+    },
+    {
+      "id": "button-1",
+      "type": "button",
+      "text": "Get started",
+      "x": 356,
+      "y": 250,
+      "width": 160,
+      "height": 48,
+      "style": { "backgroundColor": "#2563eb", "color": "#ffffff" }
+    },
+    {
+      "id": "image-1",
+      "type": "image",
+      "x": 560,
+      "y": 120,
+      "width": 280,
+      "height": 220,
+      "style": {}
+    }
+  ]
+}
