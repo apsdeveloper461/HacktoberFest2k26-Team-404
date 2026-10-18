@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
+  --font-tech: var(--font-recursive);
+}
+
+/* ChalkScript brand tokens. The landing page uses them; the workspace may too. */
+@theme {
+  --color-ink: #11120f;
+  --color-ink-raised: #191a16;
+  --color-ink-deep: #0b0c0a;
+  --color-chalk: #f1f0e8;
+  --color-paper: #dcdcd1;
+  --color-paper-light: #e8e8df;
+  --color-signal: #d9ff63;
+  --color-signal-deep: #b8e02f;
+  --color-muted: #92958b;
+  --color-muted-ink: #5c5f56;
+  --color-line: #34362f;
+  --color-line-light: #b9baae;
+  --color-graphite: #2a2b26;
+
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-draw: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

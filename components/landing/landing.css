@@ -1,0 +1,357 @@
+/* ChalkScript AI landing page — scoped styles and choreography.
+   Tokens live in app/globals.css (@theme). Everything here hangs off .landing
+   so the /workspace route is untouched.
+
+   Rule for every animation below: the element's *base* style is its final
+   state, and the keyframes' `from` fills backwards during the delay. With
+   reduced motion the animation is removed and the final composition shows. */
+
+.landing {
+  --header-h: 64px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --chalk-stroke: rgb(241 240 232 / 0.82);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-chalk);
+  overflow-x: clip;
+  font-feature-settings: "ss01" 0;
+}
+
+.landing section[id] {
+  scroll-margin-top: var(--header-h);
+}
+
+.landing ::selection {
+  background: var(--color-signal);
+  color: var(--color-ink);
+}
+
+/* ---------- Type voices ---------- */
+
+.cs-display {
+  font-family: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  font-variation-settings: "wdth" 86;
+  letter-spacing: -0.022em;
+  font-weight: 600;
+}
+
+.cs-mono {
+  font-family: var(--font-recursive), ui-monospace, monospace;
+  font-variation-settings: "MONO" 1, "CASL" 0;
+}
+
+.cs-hand {
+  font-family: var(--font-recursive), ui-rounded, cursive;
+  font-variation-settings: "MONO" 0, "CASL" 1;
+  font-weight: 460;
+}
+
+.cs-eyebrow {
+  font-family: var(--font-recursive), ui-monospace, monospace;
+  font-variation-settings: "MONO" 1, "CASL" 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------- Surfaces ---------- */
+
+.cs-blueprint {
+  background-image:
+    linear-gradient(to right, rgb(241 240 232 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(241 240 232 / 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.cs-blueprint-fine {
+  background-image:
+    linear-gradient(to right, rgb(241 240 232 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(241 240 232 / 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.cs-dotgrid {
+  background-image: radial-gradient(circle, rgb(17 18 15 / 0.17) 1px, transparent 1.3px);
+  background-size: 18px 18px;
+}
+
+/* Chalk dust: a static noise tile, rendered once. */
+.cs-dust {
+  position: relative;
+  isolation: isolate;
+}
+.cs-dust::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.94 0 0 0 0 0.91 0 0 0 1.4 -0.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Focus & a11y ---------- */
+
+.landing :focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+.landing [data-theme="light"] :focus-visible,
+.landing .cs-on-light :focus-visible {
+  outline-color: var(--color-ink);
+}
+
+.cs-skip {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 70;
+  transform: translateY(-160%);
+  background: var(--color-signal);
+  color: var(--color-ink);
+  padding: 10px 14px;
+  font-weight: 600;
+}
+.cs-skip:focus {
+  transform: none;
+}
+
+/* ---------- Choreography primitives ---------- */
+
+@keyframes cs-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.cs-draw {
+  stroke-dasharray: 1 1;
+  animation: cs-draw var(--dur, 700ms) var(--ease-draw) var(--d, 0ms) both;
+}
+
+@keyframes cs-fade {
+  from {
+    opacity: 0;
+  }
+}
+.cs-ink-in,
+.cs-fade-in {
+  animation: cs-fade var(--dur, 500ms) ease-out var(--d, 0ms) both;
+}
+
+/* Headline line reveal. The line clips; the inner span rises. */
+.cs-line {
+  display: block;
+  overflow: clip;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+@keyframes cs-rise {
+  from {
+    transform: translate3d(0, 108%, 0);
+  }
+}
+.cs-rise {
+  display: inline-block;
+  animation: cs-rise var(--dur, 720ms) var(--ease-snap) var(--d, 0ms) both;
+}
+
+@keyframes cs-snap {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+.cs-snap-in {
+  animation: cs-snap var(--dur, 420ms) var(--ease-snap) var(--d, 0ms) both;
+}
+
+@keyframes cs-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+.cs-pop-in {
+  animation: cs-pop var(--dur, 260ms) var(--ease-snap) var(--d, 0ms) both;
+}
+
+/* Rough trace fades back once the crisp boundary has taken over. */
+@keyframes cs-recede {
+  from {
+    opacity: 1;
+  }
+}
+.cs-recede {
+  opacity: var(--to, 0.22);
+  animation: cs-recede var(--dur, 600ms) ease-out var(--d, 0ms) both;
+}
+
+/* Left-to-right reveal of a compiled region. */
+@keyframes cs-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+.cs-wipe {
+  clip-path: inset(0 0 0 0);
+  animation: cs-wipe var(--dur, 700ms) var(--ease-snap) var(--d, 0ms) both;
+}
+
+/* A one-shot scanning beam (horizontal travel). Invisible at rest. */
+@keyframes cs-scan-x {
+  0% {
+    opacity: 0;
+    transform: translate3d(-100%, 0, 0);
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.cs-scan-x {
+  opacity: 0;
+  animation: cs-scan-x var(--dur, 900ms) var(--ease-draw) var(--d, 0ms) both;
+}
+
+/* Vertical beam used on the demo sheet. Restarted by remounting. */
+@keyframes cs-scan-y {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.cs-scan-y {
+  opacity: 0;
+  animation: cs-scan-y var(--dur, 1600ms) var(--ease-draw) var(--d, 0ms) both;
+}
+
+/* Marching dashes along the compile path while data is moving. */
+@keyframes cs-march {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+.cs-march {
+  animation: cs-march 900ms linear infinite;
+}
+
+/* Stage progress fill in the demo stepper. */
+@keyframes cs-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.cs-fill {
+  transform-origin: left center;
+  animation: cs-fill var(--dur, 1000ms) linear both;
+}
+
+/* Reveal-on-enter (driven by useEnterState). No attribute = shown. */
+[data-enter="wait"] .cs-on-enter {
+  opacity: 0;
+}
+[data-enter="wait"] .cs-draw-on-enter {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+[data-enter="go"] .cs-on-enter {
+  animation: cs-fade var(--dur, 600ms) ease-out var(--d, 0ms) both;
+}
+[data-enter="go"] .cs-draw-on-enter {
+  stroke-dasharray: 1 1;
+  animation: cs-draw var(--dur, 900ms) var(--ease-draw) var(--d, 0ms) both;
+}
+
+/* Audience glyphs: rough sketch, crisp overlay on hover/focus. */
+.cs-glyph-crisp {
+  opacity: 0;
+  transition: opacity 240ms var(--ease-snap);
+}
+.cs-row:hover .cs-glyph-crisp,
+.cs-row:focus-within .cs-glyph-crisp {
+  opacity: 1;
+}
+.cs-row:hover .cs-glyph-rough,
+.cs-row:focus-within .cs-glyph-rough {
+  opacity: 0.3;
+}
+.cs-glyph-rough {
+  transition: opacity 240ms ease;
+}
+@media (hover: none) {
+  .cs-glyph-crisp {
+    opacity: 1;
+  }
+  .cs-glyph-rough {
+    opacity: 0.3;
+  }
+}
+
+/* Demo sheet: hand labels are re-set in mono once the sketch has been read. */
+.cs-read {
+  transition: font-variation-settings 900ms var(--ease-snap);
+}
+[data-stage="structuring"] .cs-read,
+[data-stage="interactive"] .cs-read {
+  font-variation-settings: "MONO" 1, "CASL" 0;
+}
+
+/* Visually hidden but available to assistive tech. */
+.cs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Scrollbars inside small panes. */
+.cs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+.cs-no-scrollbar {
+  scrollbar-width: none;
+}
+.cs-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .cs-scan-x,
+  .cs-scan-y,
+  .cs-march {
+    animation: none !important;
+  }
+}

@@ -4,6 +4,9 @@ import { parseSketch, SketchParseError } from "@/lib/ai/parse-sketch";
 import type { ParseResponse } from "@/lib/api/parse";
 import { validateImageFile } from "@/lib/upload";
 
+/** The success body may also carry short notes for the user (e.g. skipped shapes). */
+type ParseBody = ParseResponse & { notes?: string[] };
+
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const image = form?.get("image");
@@ -18,17 +21,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const project = await parseSketch(image);
-    return reply({ ok: true, project });
+    const { project, notes } = await parseSketch(image);
+    return reply(notes.length ? { ok: true, project, notes } : { ok: true, project });
   } catch (error) {
-    const message =
-      error instanceof SketchParseError
-        ? error.message
-        : "Something went wrong while reading the sketch.";
-    return reply({ ok: false, error: message }, 502);
+    if (error instanceof SketchParseError) {
+      return reply({ ok: false, error: error.message }, error.status);
+    }
+    console.error("[api/parse] unexpected error", error);
+    return reply({ ok: false, error: "Something went wrong while reading the sketch." }, 500);
   }
 }
 
-function reply(body: ParseResponse, status = 200) {
+function reply(body: ParseBody, status = 200) {
   return Response.json(body, { status });
 }

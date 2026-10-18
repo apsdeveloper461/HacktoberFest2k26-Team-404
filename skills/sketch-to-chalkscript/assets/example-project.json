@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "type": "wireframe",
+  "canvas": { "width": 900, "height": 700 },
+  "elements": [
+    {
+      "id": "card-1",
+      "type": "container",
+      "x": 54,
+      "y": 343,
+      "width": 486,
+      "height": 266,
+      "style": { "backgroundColor": "#ffffff" }
+    },
+    {
+      "id": "nav-1",
+      "type": "container",
+      "x": 0,
+      "y": 0,
+      "width": 900,
+      "height": 63,
+      "style": { "backgroundColor": "#f4f4f5" }
+    },
+    {
+      "id": "nav-1-links",
+      "type": "text",
+      "text": "Launchpad  Docs  Team",
+      "x": 16,
+      "y": 18,
+      "width": 868,
+      "height": 28,
+      "style": { "fontSize": 15 }
+    },
+    {
+      "id": "heading-1",
+      "type": "text",
+      "text": "Launch checklist",
+      "x": 54,
+      "y": 98,
+      "width": 378,
+      "height": 49,
+      "style": { "fontSize": 30 }
+    },
+    {
+      "id": "image-1",
+      "type": "image",
+      "x": 612,
+      "y": 112,
+      "width": 234,
+      "height": 196,
+      "style": {}
+    },
+    {
+      "id": "text-1",
+      "type": "text",
+      "text": "Everything that has to happen before Friday.",
+      "x": 54,
+      "y": 161,
+      "width": 432,
+      "height": 28,
+      "style": { "fontSize": 17 }
+    },
+    {
+      "id": "input-1",
+      "type": "input",
+      "text": "add a task",
+      "x": 54,
+      "y": 224,
+      "width": 360,
+      "height": 49,
+      "style": {}
+    },
+    {
+      "id": "button-1",
+      "type": "button",
+      "text": "ADD",
+      "x": 432,
+      "y": 224,
+      "width": 135,
+      "height": 49,
+      "style": {}
+    },
+    {
+      "id": "card-1-title",
+      "type": "text",
+      "text": "Tasks",
+      "x": 66,
+      "y": 353,
+      "width": 462,
+      "height": 28,
+      "style": { "fontSize": 16 }
+    },
+    {
+      "id": "text-2",
+      "type": "text",
+      "text": "Sketch the flow",
+      "x": 81,
+      "y": 399,
+      "width": 270,
+      "height": 28,
+      "style": { "fontSize": 17 }
+    },
+    {
+      "id": "text-3",
+      "type": "text",
+      "text": "Photograph the board",
+      "x": 81,
+      "y": 455,
+      "width": 315,
+      "height": 28,
+      "style": { "fontSize": 17 }
+    },
+    {
+      "id": "text-4",
+      "type": "text",
+      "text": "Open the preview",
+      "x": 81,
+      "y": 511,
+      "width": 288,
+      "height": 28,
+      "style": { "fontSize": 17 }
+    }
+  ]
+}

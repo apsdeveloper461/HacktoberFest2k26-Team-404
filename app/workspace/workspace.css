@@ -1,0 +1,134 @@
+/* Workspace-only styles. Brand tokens (ink, chalk, signal, --ease-snap…) come
+   from app/globals.css; keep new global tokens there, not here. */
+
+.ws-root {
+  color-scheme: dark;
+}
+
+/* The dark "board" behind photos and the canvas. */
+.ws-dots {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgb(241 240 232 / 0.07) 1px,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
+/* Parsing: a scan line sweeping the photo, and an indeterminate bar. */
+.ws-scan {
+  animation: ws-scan 1.8s var(--ease-draw) infinite alternate;
+}
+
+@keyframes ws-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.ws-indeterminate {
+  animation: ws-indeterminate 1.4s var(--ease-draw) infinite;
+}
+
+@keyframes ws-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/* Native <dialog>: fade + settle in, and back out. */
+.app-dialog {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 160ms var(--ease-snap),
+    transform 160ms var(--ease-snap),
+    overlay 160ms allow-discrete,
+    display 160ms allow-discrete;
+}
+
+.app-dialog:not([open]) {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+@starting-style {
+  .app-dialog[open] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.app-dialog::backdrop {
+  background: rgb(11 12 10 / 0.65);
+  transition:
+    background-color 160ms var(--ease-snap),
+    overlay 160ms allow-discrete,
+    display 160ms allow-discrete;
+}
+
+@starting-style {
+  .app-dialog[open]::backdrop {
+    background: rgb(11 12 10 / 0);
+  }
+}
+
+/* View transitions: arriving from the landing page, and stage changes. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-new(.ws-page-in) {
+  animation: ws-rise-in 240ms var(--ease-snap) both;
+}
+
+::view-transition-old(.ws-stage-out) {
+  animation: ws-fade-out 120ms var(--ease-snap) both;
+}
+
+::view-transition-new(.ws-stage-in) {
+  animation: ws-rise-in 220ms var(--ease-snap) 60ms both;
+}
+
+@keyframes ws-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes ws-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-scan {
+    animation: none;
+    transform: translateY(50%);
+  }
+
+  .ws-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+
+  .app-dialog,
+  .app-dialog::backdrop {
+    transition: none;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
