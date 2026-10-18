@@ -1,16 +1,36 @@
 "use client";
 
 // Owner: Dev 2. Holds the project state; every child is a pure view of it.
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ImageUploader } from "@/components/upload/ImageUploader";
+// Stages: pick → review → parsing → editor (see useWorkspace.ts).
+import {
+  ViewTransition,
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { Badge } from "@/components/app/Badge";
+import { Button, IconButton } from "@/components/app/Button";
+import { Dialog } from "@/components/app/Dialog";
+import { PlusIcon, RedoIcon, UndoIcon } from "@/components/app/icons";
+import { ToastProvider, useToast } from "@/components/app/Toast";
+import { requestParse } from "@/lib/api/parse";
 import { sampleProject } from "@/lib/project/sample";
-import type { WireframeProject } from "@/lib/project/schema";
-import { loadProject, saveProject } from "@/lib/project/storage";
+import type { ElementPatch } from "@/lib/project/schema";
+import { saveProject } from "@/lib/project/storage";
 import { removeElement, updateElement } from "@/lib/project/update";
-import { ElementInspector } from "./ElementInspector";
 import { ExportButton } from "./ExportButton";
-import { PreviewCanvas } from "./PreviewCanvas";
-import { StructurePanel } from "./StructurePanel";
+import { WorkspaceBar } from "./WorkspaceBar";
+import { EditorStage } from "./editor/EditorStage";
+import { elementTitle } from "./elementMeta";
+import { PickStage } from "./stages/PickStage";
+import { ReviewStage } from "./stages/ReviewStage";
+import {
+  useWorkspace,
+  type ProjectSource,
+  type WorkspaceAction,
+} from "./useWorkspace";
 
 const subscribeNoop = () => () => {};
 
@@ -21,75 +41,223 @@ export function Workspace() {
     () => true,
     () => false,
   );
-  if (!hydrated) return <p className="text-zinc-500">Loading workspace…</p>;
-  return <WorkspaceEditor />;
+  return (
+    <ToastProvider>
+      {hydrated ? <WorkspaceApp /> : <WorkspaceSkeleton />}
+    </ToastProvider>
+  );
 }
 
-function WorkspaceEditor() {
-  const [project, setProject] = useState<WireframeProject | null>(loadProject);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
+/** Server/prerender shell: the app frame without state, so nothing jumps on load. */
+function WorkspaceSkeleton() {
+  return (
+    <>
+      <WorkspaceBar title="Workspace" />
+      <div className="ws-dots flex-1 bg-ink-deep" aria-busy="true" />
+    </>
+  );
+}
 
+const SOURCE_BADGE: Record<ProjectSource, { label: string; tone: "signal" | "neutral" }> = {
+  ai: { label: "AI parse", tone: "signal" },
+  sample: { label: "Sample · prepared", tone: "neutral" },
+  restored: { label: "Restored", tone: "neutral" },
+};
+
+function WorkspaceApp() {
+  const [state, dispatch] = useWorkspace();
+  const toast = useToast();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [confirmNew, setConfirmNew] = useState(false);
+
+  const { stage, sketch, project, source } = state;
+
+  // Autosave: the project JSON is the only thing persisted.
   useEffect(() => saveProject(project), [project]);
 
-  if (!project) {
-    return (
-      <ImageUploader
-        onParsed={setProject}
-        onUseSample={() => setProject(sampleProject)}
-      />
-    );
+  /** Stage changes run in a transition so <ViewTransition> can animate them. */
+  function go(action: WorkspaceAction) {
+    startTransition(() => dispatch(action));
   }
 
-  const selected = project.elements.find((el) => el.id === selectedId) ?? null;
+  function pickFile(file: File) {
+    if (sketch) URL.revokeObjectURL(sketch.url);
+    go({ type: "pickSketch", sketch: { file, url: URL.createObjectURL(file) } });
+  }
 
-  function startOver() {
-    if (window.confirm("Start a new sketch? Your current edits will be lost.")) {
-      setSelectedId(null);
-      setProject(null);
+  function removeSketch() {
+    if (sketch) URL.revokeObjectURL(sketch.url);
+    go({ type: "removeSketch" });
+  }
+
+  function openSample() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    go({ type: "loadProject", project: sampleProject, source: "sample" });
+  }
+
+  async function generate() {
+    if (!sketch || stage === "parsing") return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    dispatch({ type: "parseStart" });
+
+    const result = await requestParse(sketch.file, controller.signal);
+    // A newer request, a cancel, or "use sample" already took over.
+    if (abortRef.current !== controller) return;
+    abortRef.current = null;
+
+    if (result.ok) {
+      go({ type: "loadProject", project: result.project, source: "ai" });
+      toast({ message: `Read ${result.project.elements.length} elements from your sketch.` });
+      for (const note of result.notes?.slice(0, 2) ?? []) toast({ message: note });
+    } else if (!("cancelled" in result)) {
+      dispatch({ type: "parseFail", error: result.error });
     }
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Workspace</h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={startOver}
-            className="rounded-md border px-3 py-2"
-          >
-            New sketch
-          </button>
-          <ExportButton targetRef={canvasRef} />
-        </div>
-      </div>
+  function cancelParse() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    dispatch({ type: "parseCancel" });
+  }
 
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="flex-1 overflow-auto rounded-lg bg-zinc-100 p-4">
-          <PreviewCanvas
-            ref={canvasRef}
-            project={project}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
+  function select(id: string | null) {
+    dispatch({ type: "select", id });
+  }
+
+  function patch(id: string, change: ElementPatch, field: string) {
+    if (!project) return;
+    dispatch({
+      type: "edit",
+      project: updateElement(project, id, change),
+      key: `${id}:${field}`,
+      at: Date.now(),
+    });
+  }
+
+  function deleteElement(id: string) {
+    if (!project) return;
+    const element = project.elements.find((el) => el.id === id);
+    if (!element) return;
+    dispatch({
+      type: "edit",
+      project: removeElement(project, id),
+      selectedId: null,
+      at: Date.now(),
+    });
+    toast({
+      message: `Deleted “${elementTitle(element)}”`,
+      action: { label: "Undo", onClick: () => dispatch({ type: "undo" }) },
+    });
+  }
+
+  function requestNewSketch() {
+    // Only an untouched sample is safe to drop without asking.
+    if (source === "sample" && !state.dirty) startNewSketch();
+    else setConfirmNew(true);
+  }
+
+  function startNewSketch() {
+    setConfirmNew(false);
+    if (sketch) URL.revokeObjectURL(sketch.url);
+    go({ type: "newSketch" });
+  }
+
+  const title =
+    stage === "editor"
+      ? "Untitled sketch"
+      : stage === "pick"
+        ? "New sketch"
+        : (sketch?.file.name ?? "New sketch");
+  const badge = stage === "editor" && source ? SOURCE_BADGE[source] : null;
+
+  // Review and parsing share one view, so starting a parse doesn't animate.
+  const viewKey = stage === "parsing" ? "review" : stage;
+
+  return (
+    <>
+      <WorkspaceBar
+        title={title}
+        badge={badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
+      >
+        {stage === "editor" && (
+          <>
+            <span className="hidden items-center sm:flex">
+              <IconButton
+                label="Undo (Ctrl+Z)"
+                onClick={() => dispatch({ type: "undo" })}
+                disabled={state.past.length === 0}
+              >
+                <UndoIcon />
+              </IconButton>
+              <IconButton
+                label="Redo (Ctrl+Shift+Z)"
+                onClick={() => dispatch({ type: "redo" })}
+                disabled={state.future.length === 0}
+              >
+                <RedoIcon />
+              </IconButton>
+            </span>
+            <Button variant="ghost" onClick={requestNewSketch}>
+              <PlusIcon />
+              <span className="max-sm:sr-only">New sketch</span>
+            </Button>
+            <ExportButton targetRef={canvasRef} />
+          </>
+        )}
+      </WorkspaceBar>
+
+      <ViewTransition key={viewKey} enter="ws-stage-in" exit="ws-stage-out" default="none">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {stage === "editor" && project ? (
+            <EditorStage
+              project={project}
+              selectedId={state.selectedId}
+              sketch={sketch}
+              source={source}
+              canvasRef={canvasRef}
+              onSelect={select}
+              onPatch={patch}
+              onDelete={deleteElement}
+              onUndo={() => dispatch({ type: "undo" })}
+              onRedo={() => dispatch({ type: "redo" })}
+            />
+          ) : (stage === "review" || stage === "parsing") && sketch ? (
+            <ReviewStage
+              sketch={sketch}
+              parsing={stage === "parsing"}
+              error={state.error}
+              onGenerate={generate}
+              onCancel={cancelParse}
+              onReplace={pickFile}
+              onFileError={(error) => dispatch({ type: "fileError", error })}
+              onRemove={removeSketch}
+              onUseSample={openSample}
+            />
+          ) : (
+            <PickStage
+              error={state.error}
+              onFile={pickFile}
+              onError={(error) => dispatch({ type: "fileError", error })}
+              onUseSample={openSample}
+            />
+          )}
         </div>
-        <aside className="flex w-full flex-col gap-4 lg:w-80">
-          <ElementInspector
-            element={selected}
-            onChange={(patch) =>
-              selected && setProject(updateElement(project, selected.id, patch))
-            }
-            onDelete={() => {
-              if (!selected) return;
-              setSelectedId(null);
-              setProject(removeElement(project, selected.id));
-            }}
-          />
-          <StructurePanel project={project} />
-        </aside>
-      </div>
-    </div>
+      </ViewTransition>
+
+      <Dialog
+        open={confirmNew}
+        onClose={() => setConfirmNew(false)}
+        title="Start a new sketch?"
+        description="This clears the current project from this browser. Export a PNG first if you want to keep a copy."
+      >
+        <Button onClick={() => setConfirmNew(false)}>Keep editing</Button>
+        <Button variant="danger" onClick={startNewSketch}>
+          Discard and start new
+        </Button>
+      </Dialog>
+    </>
   );
 }

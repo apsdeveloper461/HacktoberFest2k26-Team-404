@@ -10,19 +10,29 @@ Product context lives in [CHALKSCRIPT_AI_PROJECT_PLAN.md](CHALKSCRIPT_AI_PROJECT
 ```text
 app/
   layout.tsx, page.tsx, globals.css  Landing page + root layout        → Landing
-  workspace/page.tsx                 /workspace route (upload + editor) → Dev 2
+  workspace/
+    page.tsx, layout.tsx             /workspace route + dark app frame  → Dev 2
+    error.tsx                        Crash boundary (Retry / Start over)→ Dev 2
+    workspace.css                    Scan line, dialog, view transitions→ Dev 2
+  not-found.tsx                      404 page                           → Dev 2
   api/parse/route.ts                 POST /api/parse                    → Lead
 
 components/
-  upload/ImageUploader.tsx           Pick image, preview, call the API  → Dev 2
+  app/                               App UI primitives: Button, Tabs,   → Dev 2
+                                     Dialog, Toast, fields, icons, motion tokens
+  upload/ImageUploader.tsx           Dropzone, file picker, camera      → Dev 2
   workspace/
-    Workspace.tsx                    Owns project state, wires panels   → Dev 2
+    Workspace.tsx                    Stage switch, top bar, all actions → Dev 2
+    useWorkspace.ts                  State machine + undo history       → Dev 2
+    stages/                          Pick, Review (+ parsing, errors)   → Dev 2
+    editor/                          EditorStage, CanvasViewport (zoom),→ Dev 2
+                                     SelectionOverlay, Layers, StatusBar
     PreviewCanvas.tsx                Renders project JSON on a canvas   → Dev 2
     ElementRenderer.tsx              One element → React (per type)     → Dev 2
     ElementInspector.tsx             Edit selected element              → Dev 2
     StructurePanel.tsx               JSON view (JSX view = stretch)     → Dev 2
-    ExportButton.tsx                 PNG export (TODO)                  → Dev 2
-  (landing components go in components/landing/)                        → Landing
+    ExportButton.tsx                 PNG export (html-to-image, 2×)     → Dev 2
+  landing/                           Landing page sections              → Landing
 
 lib/
   project/schema.ts                  ★ THE CONTRACT: zod schema + types → Lead + Dev 2
@@ -79,7 +89,16 @@ cp .env.example .env.local   # fill in VISION_API_URL / VISION_MODEL / VISION_AP
 npm run dev
 ```
 
-Open http://localhost:3000/workspace. **Use sample** loads `sample-project.json`, so the editor works without the AI.
+Open http://localhost:3000/workspace. **Open sample** loads `sample-project.json`, so the editor works without the AI.
+
+## Workspace UI
+
+`/workspace` is one route with four stages, driven by `useWorkspace.ts`: **pick → review → parsing → editor**. The project JSON stays the source of truth: every edit goes through `updateElement()` / `removeElement()` and is pushed onto an undo history (rapid typing in one field is grouped into one step).
+
+- **Look:** dark ink chrome around a light canvas, using the brand tokens from `app/globals.css` (`ink`, `chalk`, `signal`, `line`, `font-tech`, `--ease-snap`). Signal is reserved for the primary action, selection and focus. The canvas keeps its own white/near-black colour context, so the app theme never leaks into the user's page or the PNG.
+- **Motion:** React `<ViewTransition>` for arriving from `/` and for stage changes (stage dispatches run in `startTransition`); Motion for the selection glide, layer list and toasts. Everything is 120–240 ms and collapses to instant under `prefers-reduced-motion`.
+- **Honesty:** the top bar badge says where the project came from (AI parse / Sample / Restored), and the Original tab only shows a photo when there is one.
+- **Keyboard:** Esc deselects, Delete removes (with an Undo toast), Ctrl/⌘+Z and Shift+Ctrl/⌘+Z undo and redo; Layers is the keyboard path to selection.
 
 ## Where each role starts
 

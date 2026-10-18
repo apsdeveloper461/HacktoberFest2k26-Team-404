@@ -12,3 +12,11 @@ export function validateImageFile(file: File): string | null {
   }
   return null;
 }
+
+/** "2.4 MB" / "640 KB" — for showing the picked file's size. */
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
