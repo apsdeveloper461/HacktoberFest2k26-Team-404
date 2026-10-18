@@ -1,5 +1,5 @@
 import "server-only";
-import { MODEL_CANVAS } from "./model-schema";
+import { MODEL_GRID } from "./model-schema";
 
 // Owner: Lead. Tune this against the sample sketches in public/samples/.
 // The model answers in the shape of MODEL_RESPONSE_JSON_SCHEMA (model-schema.ts);
@@ -9,11 +9,11 @@ export const SYSTEM_INSTRUCTION =
   "You turn photos of hand-drawn website wireframes into structured layout data. " +
   "You always answer with a single JSON object and nothing else.";
 
-const { width, height } = MODEL_CANVAS;
+const G = MODEL_GRID;
 
 export const WIREFRAME_PROMPT = `Read this photo of a hand-drawn website wireframe and list every UI element you can see.
 
-Canvas: map the drawing onto a ${width} x ${height} canvas (x grows to the right, y grows down, origin at the top-left of the drawing). Ignore the paper edges, shadows, hands and background around the drawing.
+Coordinates: report every box on a 0–${G} grid, where (0, 0) is the top-left corner of the drawing and (${G}, ${G}) its bottom-right. x and width are thousandths of the drawing's width; y and height are thousandths of its height. Ignore the paper edges, shadows, hands and background around the drawing.
 
 Use exactly one of these types per element:
 - "nav": a bar across the top holding a logo or menu links.
@@ -33,4 +33,4 @@ Rules:
 - Things drawn inside a card or container are separate elements with their own boxes.
 - Always commit to your best guess for messy handwriting or unclear shapes. Never skip an element.
 - Answer with JSON only — no prose, no markdown — in this shape:
-{"canvas":{"width":${width},"height":${height}},"elements":[{"id":"button-1","type":"button","text":"Sign up","x":60,"y":130,"width":160,"height":48}]}`;
+{"canvas":{"width":${G},"height":${G}},"elements":[{"id":"button-1","type":"button","text":"Sign up","x":60,"y":180,"width":180,"height":70}]}`;

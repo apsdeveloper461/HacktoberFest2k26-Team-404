@@ -8,7 +8,8 @@ import type {
   WireframeProject,
 } from "@/lib/project/schema";
 import {
-  MODEL_CANVAS,
+  MODEL_GRID,
+  PROJECT_CANVAS,
   modelElementSchema,
   modelSketchSchema,
   type ModelElement,
@@ -26,7 +27,7 @@ export type NormalizeResult =
     }
   | { ok: false; reason: string };
 
-const { width: W, height: H } = MODEL_CANVAS;
+const { width: W, height: H } = PROJECT_CANVAS;
 const MAX_TEXT = 200;
 
 /** Words models commonly use for the types we ask for. */
@@ -76,8 +77,7 @@ type Box = { x: number; y: number; width: number; height: number };
 type Draft = { id: string; type: ElementType; text?: string; box: Box; style: ElementStyle };
 
 export function normalizeSketch(raw: unknown): NormalizeResult {
-  const root = Array.isArray(raw) ? { elements: raw } : raw;
-  const parsed = modelSketchSchema.safeParse(root);
+  const parsed = modelSketchSchema.safeParse(unwrap(raw));
   if (!parsed.success) return { ok: false, reason: "response has no elements array" };
 
   let unknownType = 0;
@@ -90,7 +90,7 @@ export function normalizeSketch(raw: unknown): NormalizeResult {
       invalid += 1;
       continue;
     }
-    const type = TYPE_ALIASES[el.data.type.trim().toLowerCase()];
+    const type = resolveType(el.data.type);
     if (!type) {
       unknownType += 1;
       continue;
@@ -98,18 +98,26 @@ export function normalizeSketch(raw: unknown): NormalizeResult {
     found.push({ el: el.data, type });
   }
 
-  // The model is asked for a 900×700 canvas, but may report (or use) another one,
-  // e.g. the photo's own pixel size. Scale so every element lands on the canvas.
+  // Boxes are asked for on a 0–1000 grid. A model may still report (or use)
+  // another space, e.g. the photo's pixels; pick the one the boxes actually fit.
   const reported = parsed.data.canvas;
-  let srcW = reported && reported.width > 0 ? reported.width : W;
-  let srcH = reported && reported.height > 0 ? reported.height : H;
   const maxX = Math.max(0, ...found.map(({ el }) => el.x + el.width));
   const maxY = Math.max(0, ...found.map(({ el }) => el.y + el.height));
-  if (maxX > srcW * 1.05) srcW = maxX;
-  if (maxY > srcH * 1.05) srcH = maxY;
+  const fits = (w: number, h: number) => maxX <= w * 1.05 && maxY <= h * 1.05;
+  let srcW = reported && reported.width > 0 ? reported.width : MODEL_GRID;
+  let srcH = reported && reported.height > 0 ? reported.height : MODEL_GRID;
+  if (!fits(srcW, srcH)) {
+    if (fits(MODEL_GRID, MODEL_GRID)) {
+      srcW = MODEL_GRID;
+      srcH = MODEL_GRID;
+    } else {
+      srcW = Math.max(srcW, maxX);
+      srcH = Math.max(srcH, maxY);
+    }
+  }
   const sx = W / srcW;
   const sy = H / srcH;
-  const rescaled = Math.abs(sx - 1) > 0.01 || Math.abs(sy - 1) > 0.01;
+  const rescaled = srcW !== MODEL_GRID || srcH !== MODEL_GRID;
 
   const ids = new Set<string>();
   const drafts: Draft[] = [];
@@ -156,6 +164,39 @@ export function normalizeSketch(raw: unknown): NormalizeResult {
     notes,
     stats: { received: parsed.data.elements.length, kept: elements.length, unknownType, invalid, rescaled },
   };
+}
+
+/** Accepts `{ elements }`, a bare element list, or either one wrapped once more. */
+function unwrap(raw: unknown): unknown {
+  if (Array.isArray(raw)) {
+    const first: unknown = raw[0];
+    if (raw.length === 1 && isObject(first) && Array.isArray(first.elements)) return first;
+    return { elements: raw };
+  }
+  if (isObject(raw) && !Array.isArray(raw.elements)) {
+    for (const key of ["wireframe", "data", "result", "project"]) {
+      const inner = raw[key];
+      if (isObject(inner) && Array.isArray(inner.elements)) return inner;
+    }
+  }
+  return raw;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * "Button" → button; compound names are read from the end, so "nav_link" → text
+ * and "image_placeholder" → image.
+ */
+function resolveType(raw: string): ModelElementType | undefined {
+  const key = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  if (TYPE_ALIASES[key]) return TYPE_ALIASES[key];
+  for (const token of key.split("_").reverse()) {
+    if (TYPE_ALIASES[token]) return TYPE_ALIASES[token];
+  }
+  return undefined;
 }
 
 /** Maps one semantic element to one or two contract elements. */

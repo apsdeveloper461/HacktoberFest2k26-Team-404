@@ -46,7 +46,7 @@ export async function callVisionModel(
   if (!config) {
     throw new VisionError(
       "config",
-      "Vision model is not configured. Set GEMINI_API_KEY in .env.local (see .env.example).",
+      "Vision model is not configured. Set GEMINI_API_KEY (or GEMMA_API_KEY) in .env.local (see .env.example).",
     );
   }
 
@@ -73,7 +73,12 @@ async function callGemini(
     systemInstruction: options.system,
     temperature: 0.2,
     abortSignal: AbortSignal.timeout(TIMEOUT_MS),
+    // The SDK retries 5xx/429 up to 5 times with backoff by default, which can
+    // burn 40 s on an overloaded model. One retry, then fail over below.
+    httpOptions: { retryOptions: { attempts: 2 } },
   });
+  // JSON mode + the response schema: on gemma-4-26b-a4b-it this gives compact,
+  // on-enum answers in ~10 s. Thinking stays minimal unless VISION_THINKING=on.
   const structured = (): GenerateContentConfig => ({
     ...base(),
     responseMimeType: "application/json",
@@ -83,35 +88,47 @@ async function callGemini(
     },
   });
 
-  try {
-    const response = await ai.models.generateContent({
-      model: config.model,
-      contents,
-      config: structured(),
-    });
-    return requireText(response.text);
-  } catch (error) {
-    // Structured output and thinking control aren't documented for every Gemma
-    // model. If the request shape is rejected, retry once as a plain prompt —
-    // the prompt still asks for JSON and zod still validates the result.
-    if (error instanceof ApiError && error.status === 400 && !isKeyProblem(error)) {
-      console.warn("[vision] structured request rejected; retrying as plain prompt", {
-        model: config.model,
-        detail: error.message.slice(0, 200),
-      });
+  const generate = async (model: string, request: GenerateContentConfig) =>
+    requireText((await ai.models.generateContent({ model, contents, config: request })).text);
+
+  const models = config.fallbackModel ? [config.model, config.fallbackModel] : [config.model];
+  let lastError: unknown;
+
+  for (const [index, model] of models.entries()) {
+    try {
       try {
-        const response = await ai.models.generateContent({
-          model: config.model,
-          contents,
-          config: base(),
-        });
-        return requireText(response.text);
-      } catch (retryError) {
-        throw toVisionError(retryError);
+        return await generate(model, structured());
+      } catch (error) {
+        // Request shape refused (schema / thinking control): retry with JSON mode alone.
+        if (error instanceof ApiError && error.status === 400 && !isKeyProblem(error)) {
+          console.warn("[vision] structured request refused; retrying with JSON mode only", {
+            model,
+            detail: error.message.slice(0, 200),
+          });
+          return await generate(model, { ...base(), responseMimeType: "application/json" });
+        }
+        throw error;
       }
+    } catch (error) {
+      lastError = error;
+      const next = models[index + 1];
+      if (next && isOverloaded(error)) {
+        console.warn("[vision] model unavailable; falling back", {
+          from: model,
+          to: next,
+          status: error instanceof ApiError ? error.status : undefined,
+        });
+        continue;
+      }
+      throw toVisionError(error);
     }
-    throw toVisionError(error);
   }
+  throw toVisionError(lastError);
+}
+
+/** "High demand" (503), internal errors (500) and rate limits (429) are worth another model. */
+function isOverloaded(error: unknown) {
+  return error instanceof ApiError && [429, 500, 503].includes(error.status);
 }
 
 /* ------------------------- OpenAI-compatible API ------------------------- */

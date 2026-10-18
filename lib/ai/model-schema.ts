@@ -4,8 +4,15 @@
 // No secrets here and no server-only import, so it can be exercised in isolation.
 import { z } from "zod";
 
-/** The model is asked to place everything on this canvas (same as the contract's default). */
-export const MODEL_CANVAS = { width: 900, height: 700 } as const;
+/**
+ * The model reports boxes on a 0–1000 grid (thousandths of the drawing's width
+ * and height). Gemma/Gemini models use this convention natively, so asking for it
+ * gives more accurate boxes than asking for pixels.
+ */
+export const MODEL_GRID = 1000;
+
+/** Every parsed project uses this canvas (the contract's default size). */
+export const PROJECT_CANVAS = { width: 900, height: 700 } as const;
 
 export const MODEL_ELEMENT_TYPES = [
   "nav",
