@@ -12,12 +12,7 @@ import {
 import { Button, type ButtonVariant } from "@/components/app/Button";
 import { cx } from "@/components/app/cx";
 import { CameraIcon, UploadIcon } from "@/components/app/icons";
-import {
-  ACCEPTED_IMAGE_TYPES,
-  MAX_IMAGE_BYTES,
-  formatBytes,
-  validateImageFile,
-} from "@/lib/upload";
+import { ACCEPTED_IMAGE_TYPES, validatePickedImage } from "@/lib/upload";
 
 type PickHandlers = {
   onFile: (file: File) => void;
@@ -30,7 +25,7 @@ const ACCEPT = ACCEPTED_IMAGE_TYPES.join(",");
 export function takeFirstImage(files: FileList | null | undefined, handlers: PickHandlers) {
   const file = files?.[0];
   if (!file) return;
-  const invalid = validateImageFile(file);
+  const invalid = validatePickedImage(file);
   if (invalid) handlers.onError(invalid);
   else handlers.onFile(file);
 }
@@ -124,7 +119,7 @@ export function ImageUploader({ disabled, ...handlers }: PickHandlers & { disabl
           {over ? "Drop to use this photo" : "Drop a photo of your sketch"}
         </p>
         <p className="font-tech text-[11px] tracking-wide text-muted">
-          PNG, JPEG or WebP · up to {formatBytes(MAX_IMAGE_BYTES)} · or paste with Ctrl+V
+          PNG, JPEG or WebP · large photos are resized for upload · or paste with Ctrl+V
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">

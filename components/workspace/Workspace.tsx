@@ -19,6 +19,7 @@ import { requestParse } from "@/lib/api/parse";
 import { sampleProject } from "@/lib/project/sample";
 import type { ElementPatch } from "@/lib/project/schema";
 import { saveProject } from "@/lib/project/storage";
+import { prepareImageForUpload, validateImageFile } from "@/lib/upload";
 import { removeElement, updateElement } from "@/lib/project/update";
 import { ExportButton } from "./ExportButton";
 import { WorkspaceBar } from "./WorkspaceBar";
@@ -103,15 +104,27 @@ function WorkspaceApp() {
     abortRef.current = controller;
     dispatch({ type: "parseStart" });
 
-    const result = await requestParse(sketch.file, controller.signal);
+    // Big phone photos are shrunk first; the Original tab keeps the full file.
+    const upload = await prepareImageForUpload(sketch.file);
+    if (abortRef.current !== controller) return;
+    const tooBig = validateImageFile(upload);
+    if (tooBig) {
+      abortRef.current = null;
+      dispatch({ type: "parseFail", error: tooBig });
+      return;
+    }
+
+    const result = await requestParse(upload, controller.signal);
     // A newer request, a cancel, or "use sample" already took over.
     if (abortRef.current !== controller) return;
     abortRef.current = null;
 
     if (result.ok) {
       go({ type: "loadProject", project: result.project, source: "ai" });
-      toast({ message: `Read ${result.project.elements.length} elements from your sketch.` });
-      for (const note of result.notes?.slice(0, 2) ?? []) toast({ message: note });
+      const count = result.project.elements.length;
+      toast({ message: `Read ${count} ${count === 1 ? "element" : "elements"} from your sketch.` });
+      const note = result.notes?.[0];
+      if (note) toast({ message: note });
     } else if (!("cancelled" in result)) {
       dispatch({ type: "parseFail", error: result.error });
     }

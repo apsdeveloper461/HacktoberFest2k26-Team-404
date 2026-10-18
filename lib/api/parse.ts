@@ -35,7 +35,8 @@ export async function requestParse(
     };
   }
 
-  // The route always answers with JSON, but a proxy or a crash may not.
+  // The route's JSON message wins; the status only fills in when a proxy
+  // or a crash answers without one.
   const data: unknown = await res.json().catch(() => null);
   if (isParseResponse(data)) return data;
   return { ok: false, error: messageForStatus(res.status) };
@@ -51,6 +52,11 @@ function isParseResponse(data: unknown): data is ParseResponse {
 
 function messageForStatus(status: number) {
   if (status === 413) return "That image is too large for the server. Try a smaller photo.";
+  if (status === 422) return "No page elements were found in this sketch. Try a clearer photo.";
+  if (status === 429) return "The AI is busy right now. Try again in a minute.";
+  if (status === 503) {
+    return "The AI isn't set up on this server yet. Use the sample to try the editor.";
+  }
   if (status === 408 || status === 504) {
     return "Reading the sketch took too long. Try again, or try a simpler photo.";
   }

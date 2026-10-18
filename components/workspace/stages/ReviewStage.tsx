@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/app/Button";
 import { cx } from "@/components/app/cx";
-import { formatBytes } from "@/lib/upload";
+import { UPLOAD_MAX_EDGE, formatBytes, needsResize } from "@/lib/upload";
 import { PickImageButton } from "@/components/upload/ImageUploader";
 import type { Sketch } from "../useWorkspace";
 import { InlineError } from "./InlineError";
@@ -77,6 +77,13 @@ export function ReviewStage({
             {size ? `${size.w} × ${size.h}` : "…"}
           </dd>
         </dl>
+
+        {size && needsResize(size.w, size.h, sketch.file.size) && (
+          <p className="-mt-3 text-[12px] leading-relaxed text-muted">
+            Sent as a compressed JPEG (longest side {UPLOAD_MAX_EDGE}px or less) for a faster
+            read. The Original tab keeps your full photo.
+          </p>
+        )}
 
         {!parsing && (
           <div className="flex gap-2">
